@@ -36,5 +36,9 @@ __pycache__/
 # Atom files
 .atom-build.json
 
-# VS Code
-.vscode/
+# VS Code files
+.DS_Store
+.vscode/configurationCache.log
+.vscode/dryrun.log
+.vscode/settings.json
+.vscode/targets.log
