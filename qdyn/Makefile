@@ -15,14 +15,14 @@ EXEC_PATH = /home/crodriguezpiceda/buildqdyn/qdyn_lsoda/
 # F90 = mpif90
 #OPT = -O3 -Wall
 # For parallel runs with MPI+OpenMP:
-F90 = mpif90
-OPT = -O3 -Wall -fopenmp
+# F90 = mpif90
+# OPT = -O3 -Wall -fopenmp
 #OPT = -O2 -w
 #-- Intel Fortran --
-# F90 = mpiifort
+F90 = mpiifort
 # OPT = -O3 -ip -ipo
 # For parallel runs with OpenMP:
-# OPT = -O3 -ip -ipo -parallel -qopenmp -par-threshold:50 -g -traceback
+OPT = -O3 -ip -ipo -parallel -qopenmp -par-threshold:50 -g -traceback
 #-no-inline-factor
 #OPT = -O3 -pg -g
 #OPT = -O3
@@ -45,16 +45,16 @@ OPT = -O3 -Wall -fopenmp
 
 # 3. Set the compiler option that enables preprocessing in your compiler
 # ifort
-# PREPROC = -fpp
+PREPROC = -fpp
 # gfortran
-PREPROC = -cpp
+# PREPROC = -cpp
 #PG, KAUST server
 # CFLAGS = -B/usr/lib/x86_64-linux-gnu
 #CFLAGS = '' 
 
 test: F90 = mpif90
-	OPT = -O3 -Wall -fopenmp
-	PREPROC = -cpp
+	OPT = -O3 -ip -ipo -parallel -qopenmp -par-threshold:50 -g -traceback
+	PREPROC = -fpp
 
 #== END USER SETTINGS =============================================
 
@@ -70,9 +70,9 @@ test: $(EXEC)
 $(EXEC): $(OBJS)
 #	$(F90) $(OPT) $(CFLAGS) -o $@ $(OBJS) $(LIBS)
 # CRP: when compiling with GNU (explicitly declaring location of libgfortran seems to solve the  issue of missing library libgfortran.so.5)
-	$(F90) $(OPT) $(CFLAGS) -o $@ $(OBJS) $(LIBS) -L/opt/ohpc/pub/compiler/gcc/8.3.0/lib64 -lgfortran
+#	$(F90) $(OPT) $(CFLAGS) -o $@ $(OBJS) $(LIBS) -L/opt/ohpc/pub/compiler/gcc/8.3.0/lib64 -lgfortran
 # CRP: when compiling with INTEL (adding '-lblas' flag seems to solve the "undefined reference to `ddot_'" issue)
-#	$(F90) $(OPT) $(CFLAGS) -o $@ $(OBJS) $(LIBS) -lblas
+	$(F90) $(OPT) $(CFLAGS) -o $@ $(OBJS) $(LIBS) -lblas
 #	$(F90) $(OPT) -fcheck=all -g $(CFLAGS) -o $@ $(OBJS) $(LIBS)
 #	$(F90) $(OPT) -o $@ $(OBJS) $(LIBS)
 
