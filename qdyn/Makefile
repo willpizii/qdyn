@@ -5,20 +5,21 @@
 #EXEC_PATH = .
 #EXEC_PATH = $(HOME)/qdyn_svn/trunk/src/
 #EXEC_PATH = $(HOME)/bin/
-EXEC_PATH = /home/crodriguezpiceda/buildqdyn/qdyn_faultlabel/
+#EXEC_PATH = /home/crodriguezpiceda/buildqdyn/qdyn_faultlabel/
+EXEC_PATH = /home/crodriguezpiceda/buildqdyn/qdyn_lsoda/
 
 # 2. Comment/uncomment/add/modify the lines corresponding to your compiler:
 
 # GNU, serial
 #Only MPI no openMP
-F90 = mpif90
+# F90 = mpif90
 #OPT = -O3 -Wall
 # For parallel runs with MPI+OpenMP:
-#F90 = mpif90
+F90 = mpif90
 OPT = -O3 -Wall -fopenmp
 #OPT = -O2 -w
 #-- Intel Fortran --
-#F90 = mpiifort
+# F90 = mpiifort
 # OPT = -O3 -ip -ipo
 # For parallel runs with OpenMP:
 # OPT = -O3 -ip -ipo -parallel -qopenmp -par-threshold:50 -g -traceback
@@ -65,8 +66,14 @@ OBJS := $(patsubst %.f90,%.o,$(wildcard *.f90))
 all: $(EXEC)
 test: $(EXEC)
 
+
 $(EXEC): $(OBJS)
-	$(F90) $(OPT) -fcheck=all -g $(CFLAGS) -o $@ $(OBJS) $(LIBS)
+#	$(F90) $(OPT) $(CFLAGS) -o $@ $(OBJS) $(LIBS)
+# CRP: when compiling with GNU (explicitly declaring location of libgfortran seems to solve the  issue of missing library libgfortran.so.5)
+	$(F90) $(OPT) $(CFLAGS) -o $@ $(OBJS) $(LIBS) -L/opt/ohpc/pub/compiler/gcc/8.3.0/lib64 -lgfortran
+# CRP: when compiling with INTEL (adding '-lblas' flag seems to solve the "undefined reference to `ddot_'" issue)
+#	$(F90) $(OPT) $(CFLAGS) -o $@ $(OBJS) $(LIBS) -lblas
+#	$(F90) $(OPT) -fcheck=all -g $(CFLAGS) -o $@ $(OBJS) $(LIBS)
 #	$(F90) $(OPT) -o $@ $(OBJS) $(LIBS)
 
 clean:
@@ -77,7 +84,8 @@ clean:
 .SUFFIXES: .f90 .o
 
 %.o: %.f90
-	$(F90) $(OPT) -fcheck=all -g -c $<
+	$(F90) $(OPT) -c $<
+#	$(F90) $(OPT) -fcheck=all -g -c $<
 
 # A special compilation rule for constants.f90:
 # Use a preprocessor directive (fpp) to define the path to the source files
