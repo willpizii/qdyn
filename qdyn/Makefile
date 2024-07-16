@@ -2,19 +2,20 @@
 
 # 1. Modify the path to the executable file only if you really need to place it elsewhere.
 #    If you change it, when you call qdyn.m you must set the input EXEC_PATH as set here
-EXEC_PATH = .
+#EXEC_PATH = .
 #EXEC_PATH = $(HOME)/qdyn_svn/trunk/src/
 #EXEC_PATH = $(HOME)/bin/
+EXEC_PATH = /home/wpizii/buildqdyn/qdynev1
 
 # 2. Comment/uncomment/add/modify the lines corresponding to your compiler:
 
 # GNU, serial
 #Only MPI no openMP
-F90 = mpif90
-OPT = -O3 -Wall
-# For parallel runs with MPI+OpenMP:
 #F90 = mpif90
-# OPT = -O3 -Wall -fopenmp
+#OPT = -O3 -Wall
+# For parallel runs with MPI+OpenMP:
+F90 = mpif90
+OPT = -O3 -Wall -fopenmp
 #OPT = -O2 -w
 #-- Intel Fortran --
 # F90 = mpiifort
@@ -51,7 +52,7 @@ PREPROC = -cpp
 #CFLAGS = '' 
 
 test: F90 = mpif90
-	OPT = -O3 -Wall
+	OPT = -O3 -Wall -fopenmp
 	PREPROC = -cpp
 
 #== END USER SETTINGS =============================================
