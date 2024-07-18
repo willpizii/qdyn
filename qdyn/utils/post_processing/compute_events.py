@@ -50,7 +50,7 @@ def compute_events(set_dict, mesh_dict, ot_fault, vmax=0.01,tmin=0,tmax=None, sa
     Note
     -----
       - This function is only compatible with version that includes vmax_fault and ivmax_fault
-      - For now src code is only outputing vmax_fault and ivmax_fault for each fault (not tau, sigma, theta as for ot_vmax). Thus the output dict doesn't contain those
+      - For now src code is only outputting vmax_fault and ivmax_fault for each fault (not tau, sigma, theta as for ot_vmax). Thus the output dict doesn't contain those
       additional quantities.
 
     """
@@ -207,13 +207,14 @@ def compute_events(set_dict, mesh_dict, ot_fault, vmax=0.01,tmin=0,tmax=None, sa
         # Calculate cumulative slip of each event (as the substraction between time-step at tmax and tmin)
         df_ev_f["cum_slip"] = (ot_ev_f.loc[idx_t_max_f, 'cum_slip_fault'].reset_index(drop=True) - ot_ev_f.loc[idx_t_min_f, 'cum_slip_fault'].reset_index(drop=True)).values
 
-
         # Calculate cumulative potency of each event
         # df_ev1["cum_potency"] = ev1["potcy_fault"].sum() # old wrapper
         df_ev_f["cum_potency"] = (ot_ev_f.loc[idx_t_max_f, 'potcy_fault'].reset_index(drop=True) - ot_ev_f.loc[idx_t_min_f, 'potcy_fault'].reset_index(drop=True)).values
 
         # Calculate peak velocity for each event
-        df_ev_f["peak_v"] = ot_ev_f["vmax_fault"].max()
+        v_event_f = ot_ev_f["vmax_fault"].loc[ot_ev_f.groupby("n_event").vmax_fault.idxmax()]
+        v_event_f.index = df_ev_f.index.to_list()
+        df_ev_f["peak_v"] = v_event_f
 
         # Calculate duration of each event
         df_ev_f["dt_event"] = df_ev_f["max_t"] - df_ev_f["min_t"]
