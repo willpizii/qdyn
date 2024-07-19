@@ -836,3 +836,77 @@ def plot_frict_prop_1d(mesh_dict):
     fig.tight_layout()
 
     return fig
+
+def plot_events(events_dict, fault_label=[1]):
+    """
+    Uses the output from compute_events to plot a series of properties
+
+    Parameters:
+        events_dict - dictionary output from compute_events post-processing function
+        fault_label - label of the fault to plot events for. Defaults to 1
+
+    Raises:
+        ValueError - if fault_label not found in the input events dictionary
+
+    Returns:
+        None - returns matplotlib figure
+    """
+    for i in fault_label:
+        if not i in events_dict["ev"]:
+            raise ValueError(f"No fault with value {i} found in the events")
+
+        df_evf = events_dict["ev"][i]
+
+        # Set the rc parameters for marker size and linewidth
+        plt.rc('lines', markersize=4, linewidth=0.5)
+
+        # create canvas
+        fig, ax = plt.subplots(nrows=3, ncols=2, figsize=(10, 7), squeeze=False)
+        axs = ax.flatten()
+
+        #Slip
+        axs[0].plot(df_evf["t_event"] / t_year, df_evf["cum_slip"], label = f"Fault {i}", marker='o')
+        axs[0].set_xlabel("t [yr]")
+        axs[0].set_ylabel("slip[m]")
+        axs[0].legend()
+        axs[0].set_title("Slip")
+
+        # Peak slip rate
+        axs[1].plot(df_evf["t_event"]/t_year, df_evf["peak_v"], label=f"Fault {i}", marker="o")
+        axs[1].set_xlabel("t [yr]")
+        axs[1].set_ylabel("slip rate [m/s]")
+        axs[1].legend()
+        axs[1].set_title("Peak slip rate")
+
+        # Event duration
+        axs[2].plot(df_evf.index, df_evf["dt_event"], label=f"Fault {i}", marker="o")
+        axs[2].set_xlabel("n° event")
+        axs[2].set_ylabel("t [s]")
+        axs[2].legend()
+        axs[2].set_title("Event duration")
+
+        # Recurrence interval within fault
+        axs[3].plot(df_evf.index, df_evf["t_interevent_intrafault"]/t_year, label=f"Fault {i}", marker="o")
+        axs[3].set_xlabel("n° event")
+        axs[3].set_ylabel("t [yr]")
+        axs[3].legend()
+        axs[3].set_title("Recurrence interval within fault")
+
+        # Moment magnitude
+        markerline1, stemlines1, baseline1 = axs[4].stem(df_evf["t_event"]/t_year,df_evf["Mw"], linefmt="#1f77b4",label = f"Fault {i}", markerfmt='o', basefmt= 'C0')
+        axs[4].set_ylim(bottom=0)
+        axs[4].set_xlabel("t [yr]")
+        axs[4].set_ylabel("Mw")
+        axs[4].legend()
+        axs[4].set_title("Moment magnitude")
+
+        #Potency
+        axs[5].plot(df_evf["t_event"] / t_year, df_evf["cum_potency"], label=f"Fault {fault_label}", marker='o')
+        axs[5].set_xlabel("t [yr]")
+        axs[5].set_ylabel("potency[m]")
+        axs[5].legend()
+        axs[5].set_title("Potency")
+
+        fig.tight_layout()
+
+    return(fig)
