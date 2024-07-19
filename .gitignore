@@ -44,3 +44,7 @@ __pycache__/
 # others
 ._.DS_Store
 .DS_Store
+
+build/
+
+:wpizii@foseres.fost.plymouth.ac.uk
