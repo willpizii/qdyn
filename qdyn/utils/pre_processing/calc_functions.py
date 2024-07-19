@@ -19,7 +19,7 @@ def cohesive_zone(G,Dc,b,sigma):
     return Lb
 
 # Calculate nucleation zone distribution
-def nucleation_zone(G,Dc,b,sigma,a,b)
+def nucleation_zone(G,Dc,b,sigma,a):
     """
     G: shear modulus
     Dc: characteristic slip distance
@@ -37,7 +37,7 @@ def nucleation_zone(G,Dc,b,sigma,a,b)
 # Calculate Ruina-Rice number
 
 def ru_number(a,b,sigma,W,G,Dc):
-     """
+    """
     G: shear modulus
     Dc: characteristic slip distance
     b: evolution parameter
@@ -57,8 +57,8 @@ def ru_number(a,b,sigma,W,G,Dc):
     Ru = ((b-a)*sigma*W)/(G*Dc)
     return Ru
 
- # Calculate Rb number
- def rb_number(a,b)
+# Calculate Rb number
+def rb_number(a,b):
     """
     a: state parameter
     b: evolution parameter
