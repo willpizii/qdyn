@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib import animation, rc
 from IPython.display import HTML
 import matplotlib.cm as cm
+import pandas as pd
 
 
 t_day = 3600 * 24.0
@@ -14,48 +15,49 @@ t_year = 365 * t_day
 figsize = (9, 8)
 
 
-def timeseries(ot, ot_vmax,tmin=None,tmax=None):
-    
-    # assign tmin and tmax of the simulation if None
-    if tmin==None:
-        tmin=ot['t'].min()
-    elif tmax==None:
-        tmax=ot['t'].max()
+def timeseries(ot, ot_vmax, tmin=None, tmax=None): # timeseries plots supporting datasets with multiple outputs
 
-    # check if tmin and t max are bounded correctly
-    if (tmin!=None) & ((tmax!=None)):
-        if tmin<ot['t'].min():
-            print('tmin is smaller than min t of simulation')
-            return()
-        elif tmax>ot['t'].max():
-            print('tmax is larger than max t of simulation')
-            return()
-    
-        ot_sample = ot[(ot['t']>=tmin) & (ot['t']<=tmax)]
-        ot_vmax_sample = ot_vmax[(ot_vmax['t']>=tmin) & (ot_vmax['t']<=tmax)]
-    else:
-        ot_sample = ot
-        ot_vmax_sample = ot_vmax
+    if isinstance(ot, pd.DataFrame):  # fallback case if a passed input is only one series
+        ot = [ot]
+    # assign tmin and tmax of the simulation if None
+    if tmin == None:
+        tmin = ot[0]['t'].min()
+    if tmax == None:
+        tmax = ot[0]['t'].max()
+
+    # check if tmin and tmax are bounded correctly
+    if tmin < ot[0]['t'].min():
+        print('tmin is smaller than min t of simulation')
+        return
+    if tmax > ot[0]['t'].max():
+        print('tmax is larger than max t of simulation')
+        return
+
+    # filter the data based on tmin and tmax
+    ot_sample = [df[(df['t'] / t_year >= tmin) & (df['t'] / t_year <= tmax)] for df in ot]
+    ot_vmax_sample = ot_vmax[(ot_vmax['t'] / t_year >= tmin) & (ot_vmax['t'] / t_year <= tmax)]
 
     fig, axes = plt.subplots(nrows=4, ncols=1, figsize=figsize)
 
-    axes[0].plot(ot_sample["t"] / t_year, ot_sample["tau"])
-    axes[0].set_ylabel("tau [Pa]")
+    for i in range(len(ot_sample)):
 
-    axes[1].plot(ot_sample["t"] / t_year, ot_sample["theta"])
-    axes[1].set_ylabel("state [s]")
+        axes[0].plot(ot_sample[i]["t"] / t_year, ot_sample[i]["tau"])
+        axes[0].set_ylabel("tau [Pa]")
 
-    axes[2].plot(ot_sample["t"] / t_year, ot_sample["sigma"])
-    axes[2].set_ylabel("sigma [Pa]")
+        axes[1].plot(ot_sample[i]["t"] / t_year, ot_sample[i]["theta"])
+        axes[1].set_ylabel("state [s]")
 
-    axes[3].plot(ot_vmax_sample["t"] / t_year, ot_vmax_sample["v"])
-    axes[3].set_ylabel("max v [m/s]")
-    axes[3].set_xlabel("time [yr]")
-    axes[3].set_yscale("log")
+        axes[2].plot(ot_sample[i]["t"] / t_year, ot_sample[i]["sigma"], label=f"Fault {i+1}")
+        axes[2].set_ylabel("sigma [Pa]")
+        axes[2].legend()
+
+        axes[3].plot(ot_vmax_sample["t"] / t_year, ot_vmax_sample["v"])
+        axes[3].set_ylabel("max v [m/s]")
+        axes[3].set_xlabel("time [yr]")
+        axes[3].set_yscale("log")
 
     plt.tight_layout()
     plt.show()
-
 
 def slip_profile(ox, warm_up=0, orientation="horizontal"):
     x_unique = ox["x"].unique()
@@ -777,14 +779,14 @@ def plot_vmax_fault(fault):
     
     labels_fault = [str(i) for i in np.arange(1,len(fault)+1)]
 
-    for i in np.arange(0,len(p.fault)):
+    for i in np.arange(0,len(fault)):
         ax[i,0].plot(fault[i]["t"]/t_year, fault[i]["vmax_fault"])
         ax[i,0].set_xlabel("time (yr)")
         ax[i,0].set_ylabel("v (m/s)")
         ax[i,0].set_title("Fault "+labels_fault[i])
     
     fig.tight_layout()
-
+    plt.show()
     return fig
 
 
@@ -837,13 +839,13 @@ def plot_frict_prop_1d(mesh_dict):
 
     return fig
 
-def plot_events(events_dict, fault_label=[1]):
+def plot_events(events_dict, fault_labels=[1]):
     """
     Uses the output from compute_events to plot a series of properties
 
     Parameters:
         events_dict - dictionary output from compute_events post-processing function
-        fault_label - label of the fault to plot events for. Defaults to 1
+        fault_labels - array of labels of the faults to plot events for. Defaults to [1]
 
     Raises:
         ValueError - if fault_label not found in the input events dictionary
@@ -851,18 +853,21 @@ def plot_events(events_dict, fault_label=[1]):
     Returns:
         None - returns matplotlib figure
     """
-    for i in fault_label:
+    # Set the rc parameters for marker size and linewidth
+    plt.rc('lines', markersize=4, linewidth=0.5)
+
+    # create canvas
+    fig, ax = plt.subplots(nrows=3, ncols=2, figsize=(10, 7), squeeze=False)
+    axs = ax.flatten()
+
+    j=0 # for colour matching
+    for i in fault_labels:
         if not i in events_dict["ev"]:
             raise ValueError(f"No fault with value {i} found in the events")
 
         df_evf = events_dict["ev"][i]
 
-        # Set the rc parameters for marker size and linewidth
-        plt.rc('lines', markersize=4, linewidth=0.5)
 
-        # create canvas
-        fig, ax = plt.subplots(nrows=3, ncols=2, figsize=(10, 7), squeeze=False)
-        axs = ax.flatten()
 
         #Slip
         axs[0].plot(df_evf["t_event"] / t_year, df_evf["cum_slip"], label = f"Fault {i}", marker='o')
@@ -872,28 +877,31 @@ def plot_events(events_dict, fault_label=[1]):
         axs[0].set_title("Slip")
 
         # Peak slip rate
-        axs[1].plot(df_evf["t_event"]/t_year, df_evf["peak_v"], label=f"Fault {i}", marker="o")
+        axs[1].plot(df_evf["t_event"] / t_year, df_evf["peak_v"], label=f"Fault {i}", marker="o")
         axs[1].set_xlabel("t [yr]")
         axs[1].set_ylabel("slip rate [m/s]")
         axs[1].legend()
         axs[1].set_title("Peak slip rate")
 
         # Event duration
-        axs[2].plot(df_evf.index, df_evf["dt_event"], label=f"Fault {i}", marker="o")
-        axs[2].set_xlabel("n° event")
+        axs[2].plot(df_evf["t_event"] / t_year, df_evf["dt_event"], label=f"Fault {i}", marker="o")
+        axs[2].set_xlabel("t [yr]")
         axs[2].set_ylabel("t [s]")
         axs[2].legend()
         axs[2].set_title("Event duration")
 
         # Recurrence interval within fault
-        axs[3].plot(df_evf.index, df_evf["t_interevent_intrafault"]/t_year, label=f"Fault {i}", marker="o")
-        axs[3].set_xlabel("n° event")
+        axs[3].plot(df_evf["t_event"] / t_year, df_evf["t_interevent_intrafault"]/t_year, label=f"Fault {i}", marker="o")
+        axs[3].set_xlabel("t [yr]")
         axs[3].set_ylabel("t [yr]")
         axs[3].legend()
         axs[3].set_title("Recurrence interval within fault")
 
         # Moment magnitude
-        markerline1, stemlines1, baseline1 = axs[4].stem(df_evf["t_event"]/t_year,df_evf["Mw"], linefmt="#1f77b4",label = f"Fault {i}", markerfmt='o', basefmt= 'C0')
+        markerline, stemlines, baseline = axs[4].stem(df_evf["t_event"]/t_year,df_evf["Mw"],label = f"Fault {i}", markerfmt='o', basefmt= 'C0')
+        plt.setp(markerline, color=f'C{j}')  # Set the marker color
+        plt.setp(stemlines, color=f'C{j}')   # Set the stem color
+        plt.setp(baseline, color=f'C{j}')    # Set the baseline color
         axs[4].set_ylim(bottom=0)
         axs[4].set_xlabel("t [yr]")
         axs[4].set_ylabel("Mw")
@@ -901,12 +909,62 @@ def plot_events(events_dict, fault_label=[1]):
         axs[4].set_title("Moment magnitude")
 
         #Potency
-        axs[5].plot(df_evf["t_event"] / t_year, df_evf["cum_potency"], label=f"Fault {fault_label}", marker='o')
+        axs[5].plot(df_evf["t_event"] / t_year, df_evf["cum_potency"], label=f"Fault {i}", marker='o')
         axs[5].set_xlabel("t [yr]")
         axs[5].set_ylabel("potency[m]")
         axs[5].legend()
         axs[5].set_title("Potency")
 
-        fig.tight_layout()
+        j += 1
 
-    return(fig)
+    fig.tight_layout()
+
+    plt.show()
+
+def cv_plot(events_dict, cv_keys = ['peak_v','dt_event','t_interevent_intrafault','Mw'], figsize=figsize):
+
+    def coeff_vars(input):
+        output_keys = cv_keys
+        output = {}
+
+        for i in range(1, input["mesh_dict"]["N_FAULTS"]+1):
+            output[i] = {}
+
+            for key in input["ev"][i].keys():
+                if key in output_keys:
+                    output[i][key] = (np.std(input["ev"][i][key]) / np.mean(input["ev"][i][key]))
+
+        return output
+
+    cv_data = coeff_vars(events_dict)
+
+    metrics = list(next(iter(cv_data.values())).keys())  # ['peak_v', 'dt_event', 't_event', 't_interevent_intrafault', 'Mw']
+    faults = sorted(cv_data.keys())
+    num_metrics = len(metrics)
+
+    # Preparing data for plotting
+    x = np.arange(len(faults))  # label locations
+    width = 0.15 # bar width
+
+    # Create a figure and a set of subplots
+    fig, ax = plt.subplots(figsize=figsize) # defaults to (9,8)
+
+    # Plot bars for each metric
+    for i, metric in enumerate(metrics):
+        metric_values = [cv_data[fault][metric] for fault in faults]
+
+        bar_positions = x + i * width
+
+        ax.bar(bar_positions, metric_values, width, label=metric)
+
+    # Add some text for labels, title, and custom x-axis tick labels, etc.
+    ax.set_xlabel('Fault Number')
+    ax.set_ylabel('Coefficient of Variation')
+    ax.set_title('Coefficient of Variation for Different Metrics by Fault')
+    ax.set_xticks(x + width * (num_metrics - 1) / 2)
+    ax.set_xticklabels(faults)
+    ax.legend(title='Metrics')
+
+    # Display the plot
+    plt.tight_layout()
+    plt.show()
