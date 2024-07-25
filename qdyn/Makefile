@@ -5,7 +5,7 @@
 #EXEC_PATH = .
 #EXEC_PATH = $(HOME)/qdyn_svn/trunk/src/
 #EXEC_PATH = $(HOME)/bin/
-EXEC_PATH = ~/Documents/REP/qdynbin
+EXEC_PATH = /work/e820/e820/willpizii/qdynbin
 
 # 2. Comment/uncomment/add/modify the lines corresponding to your compiler:
 
@@ -14,8 +14,8 @@ EXEC_PATH = ~/Documents/REP/qdynbin
 #F90 = mpif90
 #OPT = -O3 -Wall
 # For parallel runs with MPI+OpenMP:
-F90 = mpif90
-OPT = -O3 -Wall -fopenmp
+F90 = ftn
+OPT = -O3 -Wall -fopenmp -fallow-argument-mismatch
 #OPT = -O2 -w
 #-- Intel Fortran --
 # F90 = mpiifort
@@ -51,8 +51,8 @@ PREPROC = -cpp
 # CFLAGS = -B/usr/lib/x86_64-linux-gnu
 #CFLAGS = '' 
 
-test: F90 = mpif90
-	OPT = -O3 -Wall -fopenmp
+test: F90 = ftn
+	OPT = -O3 -Wall -fopenmp -fallow-argument-mismatch
 	PREPROC = -cpp
 
 #== END USER SETTINGS =============================================

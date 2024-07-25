@@ -35,7 +35,7 @@ class qdyn:
     #qdyn_path = os.path.abspath(
     #    os.path.join(os.path.realpath(__file__), os.pardir)
     #)
-    qdyn_path = '/home/will/Documents/REP/qdynbin'
+    qdyn_path = '/work/e820/e820/willpizii/qdynbin'
 
     # Working directory can be kept empty, except for special cases
     work_dir = ""

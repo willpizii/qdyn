@@ -983,3 +983,107 @@ def cv_plot(events_dict, cv_keys = ['peak_v','dt_event','t_interevent_intrafault
     # Display the plot
     plt.tight_layout()
     plt.show()
+
+def fault_progression_plot(snapshotdf, xoffset = 0, vmax = 0.01):
+    ##################
+    ## RUPTURE AREA ##
+    ##################
+
+    # create a subset of the overall snapshot dataframe only above a threshold velocity
+    ox_slip_only = snapshotdf[(snapshotdf["v"] >= vmax)].copy()
+
+    # create empty dataframe with only one row for each t-step
+    delta = ox_slip_only.drop_duplicates(subset=['t']).copy()
+
+    # initialise columns for x- and z-width
+    delta['dx'] = None
+    delta['max_x'] = None
+    delta['min_x'] = None
+    delta['dz'] = None
+
+    # for each timestep, find the min/max of x and z and store the difference
+    for t in ox_slip_only['t'].unique():
+        f_df = ox_slip_only[ox_slip_only["t"] == t]
+
+        max_x = f_df['x'].max()
+        min_x = f_df['x'].min()
+
+        max_z = f_df['z'].max()
+        min_z = f_df['z'].min()
+
+        delta.loc[delta['t'] == t, 'max_x'] = max_x
+        delta.loc[delta['t'] == t, 'min_x'] = min_x
+
+        delta.loc[delta['t'] == t, 'dx'] = max_x - min_x
+        delta.loc[delta['t'] == t, 'dz'] = max_z - min_z
+
+    delta['rupture_area'] = delta['dx'] * delta['dz'] # approximates rupture area to a rectangle - will always be an upper bound !
+
+    df = delta.copy()
+
+    df = df.sort_values(by='t').reset_index(drop=True)
+    df['rupture_area'] = pd.to_numeric(df['rupture_area'], errors='coerce')
+
+    # Function to find local maxima in 30-second intervals
+    def find_local_maxima(df, interval=30):
+        local_maxima = []
+        i = 0
+        while i < len(df):
+            start_time = df.iloc[i]['t']
+            end_time = start_time + interval
+            mask = (df['t'] >= start_time) & (df['t'] <= end_time)
+            interval_df = df[mask]
+            # display(interval_df)
+            if not interval_df.empty:
+                local_max_row = interval_df.loc[interval_df['rupture_area'].idxmax()].copy()
+                local_max_row['t'] = start_time
+                local_maxima.append(local_max_row)
+                i += 1
+            else:
+                i += 1
+        return pd.DataFrame(local_maxima).drop_duplicates(subset='t')
+
+    # Apply the function to the DataFrame
+    delta_peaks = find_local_maxima(df, interval=40)
+
+    plt.close()
+
+    t_year = 365 * 24 * 3600
+
+    color_map = {1: 'C0', 2: 'C1'}  # 'C0' and 'C1' are default Matplotlib colors - used in other plots e.g. events_plot
+
+    fig, ax = plt.subplots(figsize=(20, 8), nrows=2)
+
+    # Scatter plot on the primary y-axis with colors corresponding to usual fault assignments
+    colors = delta_peaks['fault_label'].map(color_map)
+    ax[0].scatter(delta_peaks['t'] / t_year, delta_peaks['rupture_area'], c=colors, marker="o")
+    ax[0].set_ylabel(r"Ruptured area [km$^2$]", color='k')
+    ax[0].tick_params(axis='y', labelcolor='k')
+
+    # Create a secondary y-axis
+    ax2 = ax[0].twinx()
+    ax2.plot(p.ot_vmax["t"] / t_year, p.ot_vmax["v"], color=f'grey',alpha=0.4, label='max v [m/s]')
+    ax2.set_ylabel("max v [m/s]", color='grey')
+    ax2.set_yscale("log")
+    ax2.tick_params(axis='y', labelcolor='grey')
+    ax[0].set_xlim(-100,2100)
+
+    # Optionally, set x-axis labels and title
+    ax[0].set_xticks([])
+    ax[0].set_yticks([0,2e6,4e6,6e6,8e6,10e6,12e6], labels=[0,2,4,6,8,10,12])
+
+    # Add legend if needed
+    ax2.legend(loc='lower right')
+
+    ax[1].bar(delta_peaks['t'] / t_year, delta_peaks['max_x'] - delta_peaks['min_x'], width=10, bottom=delta_peaks['min_x'], color=colors)
+    ax[1].set_ylabel("Distance along strike [m]")
+    ax[1].set_xlabel("time [yr]")
+    ax[1].set_xlim(-100,2100)
+
+    ax[1].fill_between([-100,2100], 5000, color='C0', alpha=0.2)
+    ax[1].fill_between([-100,2100], 5000 + xoffset, y2=xoffset, color='C1', alpha=0.2)
+    ax[1].set_ylim(0,5000 + xoffset)
+
+    fig.tight_layout()
+
+    plt.show()
