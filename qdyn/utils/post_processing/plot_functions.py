@@ -37,6 +37,8 @@ def timeseries(ot, ot_vmax, tmin=None, tmax=None): # timeseries plots supporting
     ot_sample = [df[(df['t'] / t_year >= tmin) & (df['t'] / t_year <= tmax)] for df in ot]
     ot_vmax_sample = ot_vmax[(ot_vmax['t'] / t_year >= tmin) & (ot_vmax['t'] / t_year <= tmax)]
 
+    plt.rcParams.update(plt.rcParamsDefault)
+
     fig, axes = plt.subplots(nrows=4, ncols=1, figsize=figsize)
 
     for i in range(len(ot_sample)):
@@ -51,10 +53,10 @@ def timeseries(ot, ot_vmax, tmin=None, tmax=None): # timeseries plots supporting
         axes[2].set_ylabel("sigma [Pa]")
         axes[2].legend()
 
-        axes[3].plot(ot_vmax_sample["t"] / t_year, ot_vmax_sample["v"])
-        axes[3].set_ylabel("max v [m/s]")
-        axes[3].set_xlabel("time [yr]")
-        axes[3].set_yscale("log")
+    axes[3].plot(ot_vmax_sample["t"] / t_year, ot_vmax_sample["v"])
+    axes[3].set_ylabel("max v [m/s]")
+    axes[3].set_xlabel("time [yr]")
+    axes[3].set_yscale("log")
 
     plt.tight_layout()
     plt.show()
@@ -330,10 +332,10 @@ def timestep_profile(ox, dip, warm_up=0, orientation="horizontal", figsize=figsi
 
 # CRP: Experimental!
 def timestep_profile_all(ox, dip, val, sigma_0=None, warm_up=0, orientation="horizontal", figsize=figsize):
-    
+
     """
     Plot timestep profile along the fault trace with a value from a col of ox as contouring.
-    
+
     Additional libraries
     --------
     cmcrameri
@@ -380,52 +382,52 @@ def timestep_profile_all(ox, dip, val, sigma_0=None, warm_up=0, orientation="hor
     """
     import matplotlib as mpl
     import cmcrameri.cm as cmc
-    
+
     # Check orientation parameter
     if orientation not in ["horizontal", "vertical"]:
         print("Error: orientation parameter must be either 'horizontal' or 'vertical'")
         return
-    
+
     # Determine coordinate to plot along
     if orientation=="horizontal":
         coord="x"
     else:
         coord="z"
-    
+
     # Get unique coordinates and sort them
     x_unique = ox[coord].unique()
     sort_inds = np.argsort(x_unique)
     x_unique = x_unique[sort_inds]
-    
+
     # Get unique times and sort them
     t_vals = np.sort(ox["t"].unique())
-    
+
     # Check that warm-up time is not greater than simulation time
     if warm_up > t_vals.max():
         raise ValueError("Warm-up time > simulation time!")
-    
+
     # Determine index for warm-up time
     ind_warmup = np.where(t_vals >= warm_up)[0][0]
-    
+
     # Get the number of unique coordinates and number of time steps
     Nx = len(x_unique)
     Nt = len(t_vals) - 1
-    
+
     # Define the slice and shape for the data
     slice = np.s_[Nx * ind_warmup:Nx * Nt]
     data_shape = (Nt - ind_warmup, Nx)
-    
+
     # Get the data values and reshape them
     x = ox[coord][slice].values.reshape(data_shape)[:, sort_inds]
     timestep = ox["step"][slice].values.reshape(data_shape)[:, sort_inds]
-    
+
     if val=="v":
         v = ox["v"][slice].values.reshape(data_shape)[:, sort_inds]
     elif val=="dsigma":
         # check sigma
         if sigma_0 ==None:
-            raise ValueError("You have to set the value for sigma_0")         
-        dsigma = sigma_0 - ox["sigma"][slice].values.reshape(data_shape)[:, sort_inds]      
+            raise ValueError("You have to set the value for sigma_0")
+        dsigma = sigma_0 - ox["sigma"][slice].values.reshape(data_shape)[:, sort_inds]
     elif val=="theta":
         theta = ox["theta"][slice].values.reshape(data_shape)[:, sort_inds]
     elif val=="tau":
@@ -437,17 +439,17 @@ def timestep_profile_all(ox, dip, val, sigma_0=None, warm_up=0, orientation="hor
     elif val=="tau_sigma":
         # check sigma
         if sigma_0 ==None:
-            raise ValueError("You have to set the value for sigma_0")           
+            raise ValueError("You have to set the value for sigma_0")
         tau_sigma = ox["tau"][slice].values.reshape(data_shape)[:, sort_inds] / sigma_0
     elif val=="slip":
         slip = ox["slip"][slice].values.reshape(data_shape)[:, sort_inds]
     else:
         raise ValueError("val not included in ox")
-        
+
     # Adjust timestep values to start at zero
     # slip -= slip[0]
     timestep -= timestep[0]
-    
+
     # Adjust time values to start at zero
     t = t_vals[ind_warmup:-1]
     t -= t[0]
@@ -455,10 +457,10 @@ def timestep_profile_all(ox, dip, val, sigma_0=None, warm_up=0, orientation="hor
     # Calculate downdip distance for vertical profile
     if orientation=="vertical":
         ddd = x / np.sin(np.deg2rad(dip))
-    
+
     # Create figure and plot the slip profile
-    fig = plt.figure(figsize=figsize)
-    
+    fig, ax = plt.subplots(figsize=figsize)
+
     # Special colorscales
     if val == "v":
         # make a colormap that has creep and dyn clearly delineated
@@ -480,25 +482,25 @@ def timestep_profile_all(ox, dip, val, sigma_0=None, warm_up=0, orientation="hor
 
         # Define the contour levels with a break at v=1e-2
         levels = [-np.inf, np.log10(1e-2), np.inf]
-        
-    
+
+
     elif val == "dsigma":
         vcmap = cmc.vik
         vnorm = mpl.colors.CenteredNorm()
-        
+
         #ticks (adjust number of elements according to vmin and vmax) --> not used for now
         dsigma_ox = sigma_0 - ox["sigma"]
-        
+
         vmax = np.max([abs(max(dsigma_ox)), abs(max(dsigma_ox))])
         vmin = -vmax
-        
+
         ticks = np.linspace(vmin, vmax, 10, endpoint=True)
-    
-    
+
+
     if orientation == "horizontal":
         if val == "v":
             CS = plt.contourf(timestep, x, np.log10(v), levels=200, cmap=vcmap, norm=vnorm)
-            CB = plt.colorbar(plt.cm.ScalarMappable(cmap=vcmap, norm=vnorm), orientation="horizontal", extend='both', ticks=ticks, pad=0.2)
+            CB = plt.colorbar(plt.cm.ScalarMappable(cmap=vcmap, norm=vnorm), ax=ax, orientation="horizontal", extend='both', ticks=ticks, pad=0.2)
             CB.ax.set_title("log v [m/s]")
         elif val=="dsigma":
             CS = plt.contourf(timestep, x, dsigma/1e6, levels=200, cmap=vcmap, norm=vnorm)
@@ -507,7 +509,7 @@ def timestep_profile_all(ox, dip, val, sigma_0=None, warm_up=0, orientation="hor
         elif val=="sigma":
             CS = plt.contourf(timestep, x, sigma/1e6, levels=200, cmap=cmc.batlow)
             CB = plt.colorbar(CS, orientation="horizontal", pad=0.2)
-            CB.ax.set_title("sigma [MPa]")        
+            CB.ax.set_title("sigma [MPa]")
         elif val=="tau":
             CS = plt.contourf(timestep, x, tau/1e6, levels=200, cmap=cmc.batlow)
             CB = plt.colorbar(CS, orientation="horizontal", pad=0.2)
@@ -534,10 +536,10 @@ def timestep_profile_all(ox, dip, val, sigma_0=None, warm_up=0, orientation="hor
 
     elif orientation == "vertical":
         ddd -= ddd.min()
-        
+
         if val == "v":
             CS = plt.contourf(ddd, timestep, levels=200, cmap=vcmap, norm=vnorm)
-            CB = plt.colorbar(plt.cm.ScalarMappable(cmap=vcmap, norm=vnorm), orientation="horizontal", extend='both', ticks=ticks, pad=0.2)
+            CB = plt.colorbar(plt.cm.ScalarMappable(cmap=vcmap, norm=vnorm), ax=ax, orientation="horizontal", extend='both', ticks=ticks, pad=0.2)
             CB.ax.set_title("log v [m/s]")
         elif val=="dsigma":
             CS = plt.contourf(ddd, timestep, dsigma/1e6, levels=200, cmap=vcmap, norm=vnorm)
@@ -546,7 +548,7 @@ def timestep_profile_all(ox, dip, val, sigma_0=None, warm_up=0, orientation="hor
         elif val=="sigma":
             CS = plt.contourf(ddd, timestep, sigma/1e6, levels=200, cmap=cmc.batlow)
             CB = plt.colorbar(CS, orientation="horizontal", pad=0.2)
-            CB.ax.set_title("sigma [MPa]")        
+            CB.ax.set_title("sigma [MPa]")
         elif val=="tau":
             CS = plt.contourf(ddd, timestep, tau/1e6, levels=200, cmap=cmc.batlow)
             CB = plt.colorbar(CS, orientation="horizontal", pad=0.2)
@@ -567,7 +569,7 @@ def timestep_profile_all(ox, dip, val, sigma_0=None, warm_up=0, orientation="hor
             CS = plt.contourf(ddd, timestep, slip, levels=50, cmap=cmc.lipari)
             CB = plt.colorbar(CS, orientation="horizontal", pad=0.2)
             CB.ax.set_title("cumulative slip (m)")
-        
+
         plt.xlabel("downdip distance (m)")
         plt.ylabel("Timestep")
         plt.gca().invert_yaxis()
@@ -578,7 +580,7 @@ def timestep_profile_all(ox, dip, val, sigma_0=None, warm_up=0, orientation="hor
 
     plt.tight_layout()
     plt.show()
-        
+
     return fig
 
 
@@ -774,6 +776,7 @@ def plot_vmax_fault(fault):
     """
     Plot time series of vmax for each fault
     """
+    plt.rcParams.update(plt.rcParamsDefault)
     
     fig,ax= plt.subplots(ncols=1, nrows=2, figsize=figsize, squeeze=False)
     
@@ -867,8 +870,6 @@ def plot_events(events_dict, fault_labels=[1]):
 
         df_evf = events_dict["ev"][i]
 
-
-
         #Slip
         axs[0].plot(df_evf["t_event"] / t_year, df_evf["cum_slip"], label = f"Fault {i}", marker='o')
         axs[0].set_xlabel("t [yr]")
@@ -908,18 +909,32 @@ def plot_events(events_dict, fault_labels=[1]):
         axs[4].legend()
         axs[4].set_title("Moment magnitude")
 
-        #Potency
-        axs[5].plot(df_evf["t_event"] / t_year, df_evf["cum_potency"], label=f"Fault {i}", marker='o')
-        axs[5].set_xlabel("t [yr]")
-        axs[5].set_ylabel("potency[m]")
-        axs[5].legend()
-        axs[5].set_title("Potency")
-
         j += 1
+
+    # Create a merged array from the separate faults
+    df_rec = pd.concat(events_dict["ev"], keys=[i for i in fault_labels])
+
+    # Resetting the index to make it unique
+    df_rec.reset_index(level=0, drop=True, inplace=True)
+    df_rec.index.name = 'n_event'
+
+    # Sorting the combined dataframe by t_event
+    df_rec.sort_values(by='t_event', inplace=True)
+
+    # A new property for t_interevent_interfault
+    df_rec['t_interevent_interfault'] = df_rec['t_event'].diff()
+
+    axs[5].plot(df_rec["t_event"] / t_year, df_rec["t_interevent_interfault"]/t_year, marker='o')
+    axs[5].set_xlabel("t [yr]")
+    axs[5].set_ylabel("t [yr]")
+    axs[5].set_title("Overall Recurrence Interval")
+
+
 
     fig.tight_layout()
 
     plt.show()
+
 
 def cv_plot(events_dict, cv_keys = ['peak_v','dt_event','t_interevent_intrafault','Mw'], figsize=figsize):
 
