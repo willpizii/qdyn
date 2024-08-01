@@ -903,7 +903,7 @@ def plot_events(events_dict, fault_labels=[1]):
         plt.setp(markerline, color=f'C{j}')  # Set the marker color
         plt.setp(stemlines, color=f'C{j}')   # Set the stem color
         plt.setp(baseline, color=f'C{j}')    # Set the baseline color
-        axs[4].set_ylim(bottom=0)
+        # axs[4].set_ylim(bottom=0)
         axs[4].set_xlabel("t [yr]")
         axs[4].set_ylabel("Mw")
         axs[4].legend()
@@ -984,13 +984,21 @@ def cv_plot(events_dict, cv_keys = ['peak_v','dt_event','t_interevent_intrafault
     plt.tight_layout()
     plt.show()
 
-def fault_progression_plot(snapshotdf, xoffset = 0, vmax = 0.01):
+def fault_progression_plot(p, xoffset = 0, vmax = 1e-4, show_nucleations=False, time=[0,2000], vmax_ce = 1e-2):
+
+    ox = p.ox
+
+    fwidth = p.set_dict['L']
+
+    min_t = time[0] - 0.05 * (time[1] - time[0])
+    max_t = time[1] + 0.05 * (time[1] - time[0])
+
     ##################
     ## RUPTURE AREA ##
     ##################
 
     # create a subset of the overall snapshot dataframe only above a threshold velocity
-    ox_slip_only = snapshotdf[(snapshotdf["v"] >= vmax)].copy()
+    ox_slip_only = ox[(ox["v"] >= vmax)].copy()
 
     # create empty dataframe with only one row for each t-step
     delta = ox_slip_only.drop_duplicates(subset=['t']).copy()
@@ -1025,7 +1033,7 @@ def fault_progression_plot(snapshotdf, xoffset = 0, vmax = 0.01):
     df['rupture_area'] = pd.to_numeric(df['rupture_area'], errors='coerce')
 
     # Function to find local maxima in 30-second intervals
-    def find_local_maxima(df, interval=30):
+    def find_local_maxima(df, interval=60):
         local_maxima = []
         i = 0
         while i < len(df):
@@ -1041,14 +1049,12 @@ def fault_progression_plot(snapshotdf, xoffset = 0, vmax = 0.01):
                 i += 1
             else:
                 i += 1
-        return pd.DataFrame(local_maxima).drop_duplicates(subset='t')
+        return pd.DataFrame(local_maxima).drop_duplicates(subset='step')
 
     # Apply the function to the DataFrame
-    delta_peaks = find_local_maxima(df, interval=40)
+    delta_peaks = find_local_maxima(df, interval=60)
 
     plt.close()
-
-    t_year = 365 * 24 * 3600
 
     color_map = {1: 'C0', 2: 'C1'}  # 'C0' and 'C1' are default Matplotlib colors - used in other plots e.g. events_plot
 
@@ -1066,7 +1072,7 @@ def fault_progression_plot(snapshotdf, xoffset = 0, vmax = 0.01):
     ax2.set_ylabel("max v [m/s]", color='grey')
     ax2.set_yscale("log")
     ax2.tick_params(axis='y', labelcolor='grey')
-    ax[0].set_xlim(-100,2100)
+    ax[0].set_xlim(min_t,max_t)
 
     # Optionally, set x-axis labels and title
     ax[0].set_xticks([])
@@ -1075,14 +1081,26 @@ def fault_progression_plot(snapshotdf, xoffset = 0, vmax = 0.01):
     # Add legend if needed
     ax2.legend(loc='lower right')
 
-    ax[1].bar(delta_peaks['t'] / t_year, delta_peaks['max_x'] - delta_peaks['min_x'], width=10, bottom=delta_peaks['min_x'], color=colors)
+    if show_nucleations:
+        from qdyn.utils.post_processing.compute_events import compute_events
+        from qdyn.utils.post_processing.nucleation_point import nucleation_point
+
+        events = compute_events(p.set_dict, p.mesh_dict, p.fault, vmax=vmax_ce)
+        mesh = p.mesh_dict
+
+        np = nucleation_point(mesh, events, save_output=False)
+        nps = pd.concat([value for value in np['np'].values()], axis=0)
+
+        ax[1].scatter(nps['t'] / t_year - 0.005 * (time[1] - time[0]), nps['x'], marker=">", color=[f'C{label-1}' for label in nps['fault_label']])
+
+    ax[1].bar(delta_peaks['t'] / t_year, delta_peaks['max_x'] - delta_peaks['min_x'], width=0.005 * (time[1] - time[0]), bottom=delta_peaks['min_x'], color=colors)
     ax[1].set_ylabel("Distance along strike [m]")
     ax[1].set_xlabel("time [yr]")
-    ax[1].set_xlim(-100,2100)
+    ax[1].set_xlim(min_t,max_t)
 
-    ax[1].fill_between([-100,2100], 5000, color='C0', alpha=0.2)
-    ax[1].fill_between([-100,2100], 5000 + xoffset, y2=xoffset, color='C1', alpha=0.2)
-    ax[1].set_ylim(0,5000 + xoffset)
+    ax[1].fill_between([min_t,max_t], fwidth, color='C0', alpha=0.2)
+    ax[1].fill_between([min_t,max_t], fwidth + xoffset, y2=xoffset, color='C1', alpha=0.2)
+    ax[1].set_ylim(0,fwidth + xoffset)
 
     fig.tight_layout()
 
