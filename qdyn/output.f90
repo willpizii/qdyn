@@ -934,13 +934,13 @@ subroutine ox_write(pb)
         write(tmp, "(a, i0)") FILE_OX_DYN_MAX, pb%ox%dyn_count
         file_name = trim(tmp)
         open(unit, file=file_name, status="replace")
-        write(unit,'(a)') '# x y z t_rup tau_max t_vmax vmax'
+        write(unit,'(a)') '# x y z t_rup tau_max t_vmax vmax fault_label'
         ! WARNING: nx should be nxglob, but this has not been implemented yet
         ! In general, QDYN will break when FFT_TYPE == 2
         do iw=1, pb%mesh%nw, nwout_dyn
           do ix=1, pb%mesh%nx, nxout_dyn
             n = (iw - 1) * pb%mesh%nx + ix
-            write(unit, '(3e15.7,4e28.20)') &
+            write(unit, '(3e15.7,4e28.20, i0)') &
               pb%mesh%xglob(n), pb%mesh%yglob(n), pb%mesh%zglob(n), &
               pb%t_rup_glob(n), pb%tau_max_glob(n), pb%t_vmax_glob(n), &
               pb%v_max_glob(n), pb%mesh%fault_label_glob(n)
